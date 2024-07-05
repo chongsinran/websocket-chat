@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+
+    <style>
+        .wholebody {
+
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.74);
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            flex-direction: column;
+
+
+        }
+
+        #chat {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            width: 300px;
+            height: 400px;
+            overflow-y: scroll;
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(255, 255, 255, 0.274);
+            backdrop-filter: blur(2px);
+            overflow-y: hidden;
+            /* Hide vertical scrollbar */
+            overflow-x: hidden;
+            /* Hide horizontal scrollbar */
+        }
+
+        .message {
+            height: auto;
+            background-color: rgb(226, 226, 226);
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            align-self: flex-start;
+            border-radius: 0 10px 10px 10px;
+            max-width: 60%;
+            word-wrap: break-word;
+
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+            justify-content: flex-start;
+        }
+
+        div,
+        p {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .selfmessage {
+            background-color: rgb(23, 65, 253);
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            align-self: flex-end;
+            color: white;
+            border-radius: 10px 0px 10px 10px;
+            max-width: 60%;
+            word-wrap: break-word;
+
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        .subscribeclass {
+            background: grey;
+            border-radius: 20px;
+            padding: 3px 10px;
+
+            width: fit-content;
+            color: white;
+            font-size: 12px;
+            margin-bottom: 10px;
+
+
+            text-align: center;
+            align-self: center;
+        }
+
+        .authclass {
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .inputwrapper {
+            margin: 10px 0;
+            width: 300px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .name {
+            font-size: 10px;
+
+        }
+
+        /* .contentmessage {
+            word-wrap: break-word; white-space: pre-line;margin: 0 !important;
+            height: fit-content;
+        } */
+
+        .messageinput {
+            width: 70%;
+            height: 30px;
+            border-radius: 10px;
+            padding: 5px 10px;
+        }
+
+        .messagebutton {
+            width: 20%;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body
+    style=" background: url('https://www.shutterstock.com/image-vector/social-media-sketch-vector-seamless-600nw-1660950727.jpg');">
+
+    <div class="wholebody">
+        <div style="text-align: center;color: black;">
+            <h1>ANONYMOUS CHAT</h1>
+        </div>
+        <p id="yourid"></p>
+        <div id="chat"></div>
+
+        <div class="inputwrapper">
+            <div class='messageinput' id="messageinput" contenteditable="true"
+                style="border: 1px solid #ccc; padding: 5px;height: 50px; overflow-y: auto; background-color: white; border-radius: 10px;">
+            </div>
+            <button class="messagebutton" onclick="sendMessage()">Send</button>
+
+        </div>
+
+    </div>
+
+    <script>
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwicm9sZSI6ImFkbWluIiwiaWF0IjoxOTE2OTE1NDU3LCJleHAiOjE5MTY5MTYzNTd9.Or5XFYUVi7ezqovPsn9ejXxs8LKgpbiuXSCzeKh1-CU';
+        const wsUrl = `ws://localhost:3000/realtime/ws?authkey=${token}`;
+        const randConstId = Math.random().toString(36).substr(2, 9)
+        const ws = new WebSocket(wsUrl, [], {});
+        document.getElementById('yourid').innerHTML = 'Your id is ' + `<span style="font-weight:700">${randConstId}</span>`
+        ws.onopen = () => {
+            console.log('Connected to WebSocket');
+
+            const registerMessage = {
+                clientId: randConstId,
+                type: 'register',
+
+            };
+
+            //authentication
+            ws.send(JSON.stringify(registerMessage));
+
+            const subscribeMessage = {
+                clientId: randConstId,
+                type: 'subscribe',
+                topic: 'globalChat',
+
+            };
+            ws.send(JSON.stringify(subscribeMessage));
+
+
+            // setTimeout(() => {
+            //     const publishMessage = {
+            //         clientId: randConstId,
+            //         type: 'publish',
+            //         topic: 'globalChat',
+            //         content: "hello"
+            //     };
+            //     ws.send(JSON.stringify(publishMessage));
+            // }, 1000);
+        };
+
+        ws.onmessage = (event) => {
+            const messageData = JSON.parse(event.data);
+            displayMessage(messageData);
+        };
+
+        function sendMessage() {
+            const input = document.getElementById('messageinput');
+            const message = input.innerText;
+            if (message) {
+                const publishMessage = {
+                    clientId: randConstId,
+                    type: 'publish',
+                    topic: 'globalChat',
+                    content: message
+                };
+                ws.send(JSON.stringify(publishMessage));
+                input.innerHTML = '';
+            }
+        }
+
+
+
+        function displayMessage(messageData) {
+            console.log(messageData)
+            if (messageData?.content) {
+
+                if (messageData?.clientId == randConstId) {
+                    const chat = document.getElementById('chat');
+                    const messageElement = document.createElement('div');
+                    messageElement.innerHTML = `<div class="messagebox">
+                  
+                        <div class="contentmessage" >
+                            ${messageData.content = messageData.content.replace(/[ ]/g, '&nbsp;').replace(/[\n]/g, '<br>')}
+                        </div>`
+                    messageElement.className = 'selfmessage';
+                    // messageElement.textContent = `${messageData.clientId || 'Server'}: ${messageData.content}`;
+                    chat.appendChild(messageElement);
+                    chat.scrollTop = chat.scrollHeight;
+                } else {
+                    const chat = document.getElementById('chat');
+                    const messageElement = document.createElement('div');
+                    messageElement.innerHTML = `
+                        <div class="name">                  
+                            ${messageData?.clientId}
+                        </div>
+                        <div class="contentmessage">
+                            ${messageData.content = messageData.content.replace(' ', '&nbsp;').replace('\n', '<br>')}
+                        </div>
+                        `
+                    messageElement.className = 'message';
+
+                    chat.appendChild(messageElement);
+                    chat.scrollTop = chat.scrollHeight;
+                }
+
+            }
+            if (messageData?.type == 'register') {
+                const chat = document.getElementById('chat');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'authclass';
+                messageElement.textContent = 'Authorized!'
+                chat.appendChild(messageElement);
+                chat.scrollTop = chat.scrollHeight;
+            }
+
+            if (messageData?.type == 'subscribe') {
+                const chat = document.getElementById('chat');
+                const messageElement = document.createElement('div');
+                messageElement.className = 'subscribeclass';
+                messageElement.textContent = `${messageData.clientId == randConstId ? "You joined the global chat" : messageData.clientId + " joined the global chat"}`;
+                chat.appendChild(messageElement);
+                chat.scrollTop = chat.scrollHeight;
+            }
+
+        }
+    </script>
+</body>
+
+</html>
